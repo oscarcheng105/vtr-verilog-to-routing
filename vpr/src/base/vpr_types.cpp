@@ -255,12 +255,12 @@ void free_cluster_placement_stats(t_cluster_placement_stats* cluster_placement_s
             cur = cluster_placement_stats_list[index].valid_primitives[j]->next_primitive;
             while (cur != nullptr) {
                 next = cur->next_primitive;
-                free(cur);
+                delete(cur);
                 cur = next;
             }
-            free(cluster_placement_stats_list[index].valid_primitives[j]);
+            delete(cluster_placement_stats_list[index].valid_primitives[j]);
         }
-        free(cluster_placement_stats_list[index].valid_primitives);
+        delete[](cluster_placement_stats_list[index].valid_primitives);
     }
-    free(cluster_placement_stats_list);
+    delete[](cluster_placement_stats_list);
 }
