@@ -849,8 +849,7 @@ static void alloc_and_load_direct_interc_edges(t_interconnect* interconnect,
 
             //Allocate space for output pin set's in-coming edge (one edge per pin)
 
-            output_pin->input_edges.resize(output_pin->num_input_edges + 1);                                                                    (output_pin->num_input_edges + 1) * sizeof(t_pb_graph_edge*));
-
+            output_pin->input_edges.resize(output_pin->num_input_edges + 1);
             int ipin_edge = output_pin->num_input_edges;
             int iedge = iset * pins_per_set + ipin;
             output_pin->input_edges[ipin_edge] = &edges[iedge];
