@@ -107,8 +107,8 @@ static void alloc_pin_classes_in_pb_graph_node(t_pb_graph_node* pb_graph_node) {
                 pb_graph_node->output_pins[i][j].list_of_connectable_input_pin_ptrs = new t_pb_graph_pin**[pb_graph_node->pb_type->depth];
                 pb_graph_node->output_pins[i][j].num_connectable_primitive_input_pins = new int[pb_graph_node->pb_type->depth];
                 for (k = 0; k < pb_graph_node->pb_type->depth; k++) {
-                	pb_graph_node->output_pins[i][j].list_of_connectable_input_pin_ptrs[k] = nullptr;
-                	pb_graph_node->output_pins[i][j].num_connectable_primitive_input_pins[k] = 0;
+                    pb_graph_node->output_pins[i][j].list_of_connectable_input_pin_ptrs[k] = nullptr;
+                    pb_graph_node->output_pins[i][j].num_connectable_primitive_input_pins[k] = 0;
                     pb_graph_node->output_pins[i][j].parent_pin_class[k] = OPEN;
                 }
             }
@@ -265,11 +265,11 @@ static void load_pin_class_by_depth(t_pb_graph_node* pb_graph_node,
         pb_graph_node->num_input_pin_class = *input_count + 1; /* number of input pin classes discovered + 1 for primitive inputs not reachable from cluster input pins */
         pb_graph_node->input_pin_class_size = new int[*input_count + 1];
         for (i = 0; i < *input_count + 1; i++) /* zero-initializing */
-        	pb_graph_node->input_pin_class_size[i] = 0;
+            pb_graph_node->input_pin_class_size[i] = 0;
         pb_graph_node->num_output_pin_class = *output_count + 1; /* number of output pin classes discovered + 1 for primitive inputs not reachable from cluster input pins */
         pb_graph_node->output_pin_class_size = new int[*output_count + 1];
         for (i = 0; i < *output_count + 1; i++) /* zero-initializing */
-        	pb_graph_node->output_pin_class_size[i] = 0;
+            pb_graph_node->output_pin_class_size[i] = 0;
         sum_pin_class(pb_graph_node);
     }
 }

@@ -223,25 +223,25 @@ static void alloc_and_load_pb_graph(t_pb_graph_node* pb_graph_node,
     }
 
     /* Checks for num_x_port > 0 to avoid bad_array_new_length error. */
-    if (pb_graph_node->num_input_ports > 0){
-    	pb_graph_node->num_input_pins = new int[pb_graph_node->num_input_ports]{0};
-    	pb_graph_node->input_pins = new t_pb_graph_pin*[pb_graph_node->num_input_ports];
-    	for (i = 0; i < pb_graph_node->num_input_ports; i++)
-    		pb_graph_node->input_pins[i] = nullptr;
+    if (pb_graph_node->num_input_ports > 0) {
+        pb_graph_node->num_input_pins = new int[pb_graph_node->num_input_ports]{0};
+        pb_graph_node->input_pins = new t_pb_graph_pin*[pb_graph_node->num_input_ports];
+        for (i = 0; i < pb_graph_node->num_input_ports; i++)
+            pb_graph_node->input_pins[i] = nullptr;
     }
 
-    if (pb_graph_node->num_output_ports > 0){
-    	pb_graph_node->num_output_pins = new int[pb_graph_node->num_output_ports]{0};
-    	pb_graph_node->output_pins = new t_pb_graph_pin*[pb_graph_node->num_output_ports];
-    	for (i = 0; i < pb_graph_node->num_output_ports; i++)
-        		pb_graph_node->output_pins[i] = nullptr;
+    if (pb_graph_node->num_output_ports > 0) {
+        pb_graph_node->num_output_pins = new int[pb_graph_node->num_output_ports]{0};
+        pb_graph_node->output_pins = new t_pb_graph_pin*[pb_graph_node->num_output_ports];
+        for (i = 0; i < pb_graph_node->num_output_ports; i++)
+            pb_graph_node->output_pins[i] = nullptr;
     }
 
-    if (pb_graph_node->num_clock_ports > 0){
-    	pb_graph_node->num_clock_pins = new int[pb_graph_node->num_clock_ports]{0};
-    	pb_graph_node->clock_pins = new t_pb_graph_pin*[pb_graph_node->num_clock_ports];
-    	for (i = 0; i < pb_graph_node->num_clock_ports; i++)
-        		pb_graph_node->clock_pins[i] = nullptr;
+    if (pb_graph_node->num_clock_ports > 0) {
+        pb_graph_node->num_clock_pins = new int[pb_graph_node->num_clock_ports]{0};
+        pb_graph_node->clock_pins = new t_pb_graph_pin*[pb_graph_node->num_clock_ports];
+        for (i = 0; i < pb_graph_node->num_clock_ports; i++)
+            pb_graph_node->clock_pins[i] = nullptr;
     }
 
     i_input = i_output = i_clockport = 0;
@@ -326,7 +326,7 @@ static void alloc_and_load_pb_graph(t_pb_graph_node* pb_graph_node,
         for (j = 0; j < pb_type->modes[i].num_pb_type_children; j++) {
             pb_graph_node->child_pb_graph_nodes[i][j] = new t_pb_graph_node[pb_type->modes[i].pb_type_children[j].num_pb];
             for (k = 0; k < pb_type->modes[i].pb_type_children[j].num_pb; k++) {
-            	pb_graph_node->child_pb_graph_nodes[i][j][k] = t_pb_graph_node();
+                pb_graph_node->child_pb_graph_nodes[i][j][k] = t_pb_graph_node();
                 alloc_and_load_pb_graph(&pb_graph_node->child_pb_graph_nodes[i][j][k],
                                         pb_graph_node, &pb_type->modes[i].pb_type_children[j],
                                         k, load_power_structures, pin_count_in_cluster);
@@ -336,7 +336,7 @@ static void alloc_and_load_pb_graph(t_pb_graph_node* pb_graph_node,
 
     pb_graph_node->interconnect_pins = new t_interconnect_pins*[pb_type->num_modes];
     for (i = 0; i < pb_type->num_modes; i++) {
-    	pb_graph_node->interconnect_pins[i] = nullptr;
+        pb_graph_node->interconnect_pins[i] = nullptr;
         /* Create interconnect for mode */
         alloc_and_load_mode_interconnect(pb_graph_node,
                                          pb_graph_node->child_pb_graph_nodes[i], &pb_type->modes[i],
@@ -480,8 +480,8 @@ static void alloc_and_load_interconnect_pins(t_interconnect_pins* interc_pins,
             interc_pins->input_pins = new t_pb_graph_pin**[interconnect->interconnect_power->num_input_ports];
             for (port_idx = 0; port_idx < interconnect->interconnect_power->num_input_ports; port_idx++) {
                 interc_pins->input_pins[port_idx] = new t_pb_graph_pin*[interconnect->interconnect_power->num_pins_per_port];
-                for (int i = 0; i < interconnect->interconnect_power->num_pins_per_port; i ++)
-                	interc_pins->input_pins[port_idx][i] = nullptr;
+                for (int i = 0; i < interconnect->interconnect_power->num_pins_per_port; i++)
+                    interc_pins->input_pins[port_idx][i] = nullptr;
             }
             num_ports = 0;
             for (set_idx = 0; set_idx < num_input_sets; set_idx++) {
@@ -494,8 +494,8 @@ static void alloc_and_load_interconnect_pins(t_interconnect_pins* interc_pins,
             interc_pins->output_pins = new t_pb_graph_pin**[interconnect->interconnect_power->num_output_ports];
             for (port_idx = 0; port_idx < interconnect->interconnect_power->num_output_ports; port_idx++) {
                 interc_pins->output_pins[port_idx] = new t_pb_graph_pin*[interconnect->interconnect_power->num_pins_per_port];
-                for (int i = 0; i < interconnect->interconnect_power->num_pins_per_port; i ++)
-                	interc_pins->output_pins[port_idx][i] = nullptr;
+                for (int i = 0; i < interconnect->interconnect_power->num_pins_per_port; i++)
+                    interc_pins->output_pins[port_idx][i] = nullptr;
             }
             num_ports = 0;
             for (set_idx = 0; set_idx < num_output_sets; set_idx++) {
@@ -530,11 +530,10 @@ static void alloc_and_load_mode_interconnect(t_pb_graph_node* pb_graph_parent_no
         VTR_ASSERT(pb_graph_parent_node->interconnect_pins[mode->index] == nullptr);
         pb_graph_parent_node->interconnect_pins[mode->index] = new t_interconnect_pins[mode->num_interconnect];
         for (i = 0; i < mode->num_interconnect; i++)
-        	pb_graph_parent_node->interconnect_pins[mode->index][i] = t_interconnect_pins();
+            pb_graph_parent_node->interconnect_pins[mode->index][i] = t_interconnect_pins();
     }
 
     for (i = 0; i < mode->num_interconnect; i++) {
-
         /* determine the interconnect input and output pins */
         input_pb_graph_node_pins = alloc_and_load_port_pin_ptrs_from_string(mode->interconnect[i].line_num, pb_graph_parent_node,
                                                                             pb_graph_children_nodes, mode->interconnect[i].input_string,
@@ -657,9 +656,9 @@ t_pb_graph_pin*** alloc_and_load_port_pin_ptrs_from_string(const int line_num,
 
     pb_graph_pins = new t_pb_graph_pin**[*num_sets];
     *num_ptrs = new int[*num_sets];
-    for (i = 0; i < *num_sets; i++){
-    	pb_graph_pins[i] = nullptr;
-    	(*num_ptrs)[i] = 0;
+    for (i = 0; i < *num_sets; i++) {
+        pb_graph_pins[i] = nullptr;
+        (*num_ptrs)[i] = 0;
     }
 
     curr_set = 0;
@@ -734,7 +733,7 @@ static void alloc_and_load_complete_interc_edges(t_interconnect* interconnect,
 
     edges = new t_pb_graph_edge[in_count * out_count];
     for (int i = 0; i < in_count * out_count; i++)
-    	edges[i] = t_pb_graph_edge();
+        edges[i] = t_pb_graph_edge();
 
     cur = new vtr::t_linked_vptr;
     cur->next = edges_head;
@@ -747,11 +746,11 @@ static void alloc_and_load_complete_interc_edges(t_interconnect* interconnect,
 
     for (i_inset = 0; i_inset < num_input_sets; i_inset++) {
         for (i_inpin = 0; i_inpin < num_input_ptrs[i_inset]; i_inpin++) {
-        	input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->output_edges = (t_pb_graph_edge**)vtr::realloc(
-            input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->output_edges,
-            (input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->num_output_edges
-             + out_count)
-                * sizeof(t_pb_graph_edge*));
+            input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->output_edges = (t_pb_graph_edge**)vtr::realloc(
+                input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->output_edges,
+                (input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->num_output_edges
+                 + out_count)
+                    * sizeof(t_pb_graph_edge*));
         }
     }
 
@@ -823,7 +822,7 @@ static void alloc_and_load_direct_interc_edges(t_interconnect* interconnect,
     /* Allocate memory for edges */
     t_pb_graph_edge* edges = new t_pb_graph_edge[pins_per_set * num_output_sets];
     for (int i = 0; i < pins_per_set * num_output_sets; i++)
-    	edges[i] = t_pb_graph_edge();
+        edges[i] = t_pb_graph_edge();
     vtr::t_linked_vptr* cur = new vtr::t_linked_vptr;
     cur->next = edges_head;
     edges_head = cur;
@@ -840,7 +839,7 @@ static void alloc_and_load_direct_interc_edges(t_interconnect* interconnect,
         //Allocate space for input pin set's out-going edges (one to each out-set)
 
         input_pin->output_edges = (t_pb_graph_edge**)vtr::realloc(input_pin->output_edges,
-                                                               (input_pin->num_output_edges + num_output_sets) * sizeof(t_pb_graph_edge*));
+                                                                  (input_pin->num_output_edges + num_output_sets) * sizeof(t_pb_graph_edge*));
 
         //Associate each input pin with it's new out-going edges
         for (int iset = 0; iset < num_output_sets; ++iset) {
@@ -858,7 +857,7 @@ static void alloc_and_load_direct_interc_edges(t_interconnect* interconnect,
             //Allocate space for output pin set's in-coming edge (one edge per pin)
 
             output_pin->input_edges = (t_pb_graph_edge**)vtr::realloc(output_pin->input_edges,
-                                                                     (output_pin->num_input_edges + 1) * sizeof(t_pb_graph_edge*));
+                                                                      (output_pin->num_input_edges + 1) * sizeof(t_pb_graph_edge*));
 
             int ipin_edge = output_pin->num_input_edges;
             int iedge = iset * pins_per_set + ipin;
@@ -906,9 +905,9 @@ static void alloc_and_load_mux_interc_edges(t_interconnect* interconnect,
                   "Mux must have one output\n");
     }
 
-    edges =  new t_pb_graph_edge[num_input_sets];
+    edges = new t_pb_graph_edge[num_input_sets];
     for (int i = 0; i < num_input_sets; i++)
-    	edges[i] = t_pb_graph_edge();
+        edges[i] = t_pb_graph_edge();
 
     cur = new vtr::t_linked_vptr;
     cur->next = edges_head;
@@ -921,7 +920,6 @@ static void alloc_and_load_mux_interc_edges(t_interconnect* interconnect,
 
     for (i_inset = 0; i_inset < num_input_sets; i_inset++) {
         for (i_inpin = 0; i_inpin < num_input_ptrs[i_inset]; i_inpin++) {
-
             input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->output_edges = (t_pb_graph_edge**)vtr::realloc(
                 input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->output_edges,
                 (input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->num_output_edges
@@ -931,7 +929,6 @@ static void alloc_and_load_mux_interc_edges(t_interconnect* interconnect,
     }
 
     for (i_outpin = 0; i_outpin < num_output_ptrs[0]; i_outpin++) {
-
         output_pb_graph_node_pin_ptrs[0][i_outpin]->input_edges = (t_pb_graph_edge**)vtr::realloc(
             output_pb_graph_node_pin_ptrs[0][i_outpin]->input_edges,
             (output_pb_graph_node_pin_ptrs[0][i_outpin]->num_input_edges
@@ -948,9 +945,9 @@ static void alloc_and_load_mux_interc_edges(t_interconnect* interconnect,
 
         edges[i_inset].input_pins = new t_pb_graph_pin*[num_output_ptrs[0]];
         edges[i_inset].output_pins = new t_pb_graph_pin*[num_output_ptrs[0]];
-        for (int i = 0; i < num_output_ptrs[0]; i++){
-        	edges[i_inset].input_pins[i] = nullptr;
-        	edges[i_inset].output_pins[i] = nullptr;
+        for (int i = 0; i < num_output_ptrs[0]; i++) {
+            edges[i_inset].input_pins[i] = nullptr;
+            edges[i_inset].output_pins[i] = nullptr;
         }
 
         edges[i_inset].num_input_pins = num_output_ptrs[0];

@@ -62,11 +62,11 @@ t_cluster_placement_stats* alloc_and_load_cluster_placement_stats() {
 
     cluster_placement_stats_list = new t_cluster_placement_stats[device_ctx.logical_block_types.size()];
     for (const auto& type : device_ctx.logical_block_types) {
-    	cluster_placement_stats_list[type.index] = t_cluster_placement_stats();
+        cluster_placement_stats_list[type.index] = t_cluster_placement_stats();
         if (!is_empty_type(&type)) {
             cluster_placement_stats_list[type.index].valid_primitives = new t_cluster_placement_primitive*[get_max_primitives_in_pb_type(type.pb_type) + 1];
             for (int i = 0; i < get_max_primitives_in_pb_type(type.pb_type) + 1; i++)
-            	cluster_placement_stats_list[type.index].valid_primitives[i] = nullptr;
+                cluster_placement_stats_list[type.index].valid_primitives[i] = nullptr;
             /* too much memory allocated but shouldn't be a problem */
 
             cluster_placement_stats_list[type.index].curr_molecule = nullptr;
