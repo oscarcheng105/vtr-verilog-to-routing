@@ -747,24 +747,14 @@ static void alloc_and_load_complete_interc_edges(t_interconnect* interconnect,
     for (i_inset = 0; i_inset < num_input_sets; i_inset++) {
         for (i_inpin = 0; i_inpin < num_input_ptrs[i_inset]; i_inpin++) {
             input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->output_edges.resize(input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->num_output_edges
-            		+ out_count);
-//            input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->output_edges = (t_pb_graph_edge**)vtr::realloc(
-//                input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->output_edges,
-//                (input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->num_output_edges
-//                 + out_count)
-//                    * sizeof(t_pb_graph_edge*));
+                                                                                + out_count);
         }
     }
 
     for (i_outset = 0; i_outset < num_output_sets; i_outset++) {
         for (i_outpin = 0; i_outpin < num_output_ptrs[i_outset]; i_outpin++) {
-        	output_pb_graph_node_pin_ptrs[i_outset][i_outpin]->input_edges.resize(output_pb_graph_node_pin_ptrs[i_outset][i_outpin]->num_input_edges
-                 + in_count);
-//            output_pb_graph_node_pin_ptrs[i_outset][i_outpin]->input_edges = (t_pb_graph_edge**)vtr::realloc(
-//                output_pb_graph_node_pin_ptrs[i_outset][i_outpin]->input_edges,
-//                (output_pb_graph_node_pin_ptrs[i_outset][i_outpin]->num_input_edges
-//                 + in_count)
-//                    * sizeof(t_pb_graph_edge*));
+            output_pb_graph_node_pin_ptrs[i_outset][i_outpin]->input_edges.resize(output_pb_graph_node_pin_ptrs[i_outset][i_outpin]->num_input_edges
+                                                                                  + in_count);
         }
     }
 
@@ -843,8 +833,6 @@ static void alloc_and_load_direct_interc_edges(t_interconnect* interconnect,
         //Allocate space for input pin set's out-going edges (one to each out-set)
 
         input_pin->output_edges.resize(input_pin->num_output_edges + num_output_sets);
-//        input_pin->output_edges = (t_pb_graph_edge**)vtr::realloc(input_pin->output_edges,
-//                                                                  (input_pin->num_output_edges + num_output_sets) * sizeof(t_pb_graph_edge*));
 
         //Associate each input pin with it's new out-going edges
         for (int iset = 0; iset < num_output_sets; ++iset) {
@@ -861,9 +849,7 @@ static void alloc_and_load_direct_interc_edges(t_interconnect* interconnect,
 
             //Allocate space for output pin set's in-coming edge (one edge per pin)
 
-            output_pin->input_edges.resize(output_pin->num_input_edges + 1);
-//            output_pin->input_edges = (t_pb_graph_edge**)vtr::realloc(output_pin->input_edges,
-//                                                                      (output_pin->num_input_edges + 1) * sizeof(t_pb_graph_edge*));
+            output_pin->input_edges.resize(output_pin->num_input_edges + 1);                                                                    (output_pin->num_input_edges + 1) * sizeof(t_pb_graph_edge*));
 
             int ipin_edge = output_pin->num_input_edges;
             int iedge = iset * pins_per_set + ipin;
@@ -926,25 +912,14 @@ static void alloc_and_load_mux_interc_edges(t_interconnect* interconnect,
 
     for (i_inset = 0; i_inset < num_input_sets; i_inset++) {
         for (i_inpin = 0; i_inpin < num_input_ptrs[i_inset]; i_inpin++) {
-        	input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->output_edges.resize(input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->num_output_edges
-                + 1);
-//
-//            input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->output_edges = (t_pb_graph_edge**)vtr::realloc(
-//                input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->output_edges,
-//                (input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->num_output_edges
-//                 + 1)
-//                    * sizeof(t_pb_graph_edge*));
+            input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->output_edges.resize(input_pb_graph_node_pin_ptrs[i_inset][i_inpin]->num_output_edges
+                                                                                + 1);
         }
     }
 
     for (i_outpin = 0; i_outpin < num_output_ptrs[0]; i_outpin++) {
-    	output_pb_graph_node_pin_ptrs[0][i_outpin]->input_edges.resize(output_pb_graph_node_pin_ptrs[0][i_outpin]->num_input_edges
-             + num_input_sets);
-//        output_pb_graph_node_pin_ptrs[0][i_outpin]->input_edges = (t_pb_graph_edge**)vtr::realloc(
-//            output_pb_graph_node_pin_ptrs[0][i_outpin]->input_edges,
-//            (output_pb_graph_node_pin_ptrs[0][i_outpin]->num_input_edges
-//             + num_input_sets)
-//                * sizeof(t_pb_graph_edge*));
+        output_pb_graph_node_pin_ptrs[0][i_outpin]->input_edges.resize(output_pb_graph_node_pin_ptrs[0][i_outpin]->num_input_edges
+                                                                       + num_input_sets);
     }
 
     /* Load connections between pins and record these updates in the edges */
@@ -1213,7 +1188,12 @@ static bool realloc_and_load_pb_graph_pin_ptrs_at_var(const int line_num,
 
     int prev_num_pins = *num_pins;
     *num_pins += (abs(pb_msb - pb_lsb) + 1) * (abs(pin_msb - pin_lsb) + 1);
-    *pb_graph_pins = (t_pb_graph_pin**)vtr::realloc(*pb_graph_pins, *num_pins * sizeof(t_pb_graph_pin*));
+    auto temp = new t_pb_graph_pin*[prev_num_pins];
+    delete[](*pb_graph_pins);
+    *pb_graph_pins = new t_pb_graph_pin*[*num_pins];
+    for (i = 0; i < prev_num_pins; i++)
+        (*pb_graph_pins)[i] = temp[i];
+
     i = j = 0;
 
     ipb = pb_lsb;
