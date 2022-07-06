@@ -369,9 +369,12 @@ bool vpr_flow(t_vpr_setup& vpr_setup, t_arch& arch) {
         }
     }
 
-    vpr_create_device(vpr_setup, arch);
+    // For the time being, we decided to create the flat graph after placement is done. Thus, the is_flat parameter for this function
+    //, since it is called before routing, should be false.
+    vpr_create_device(vpr_setup, arch, false);
 
-    vpr_init_graphics(vpr_setup, arch);
+    // TODO: Placer still assumes that cluster net list is used - graphics can not work with flat routing yet
+    vpr_init_graphics(vpr_setup, arch, false);
     { //Place
         bool place_success = vpr_place_flow(vpr_setup, arch);
 
@@ -400,7 +403,7 @@ bool vpr_flow(t_vpr_setup& vpr_setup, t_arch& arch) {
     return route_status.success();
 }
 
-void vpr_create_device(t_vpr_setup& vpr_setup, const t_arch& arch) {
+void vpr_create_device(t_vpr_setup& vpr_setup, const t_arch& arch, bool is_flat) {
     vtr::ScopedStartFinishTimer timer("Create Device");
     vpr_create_device_grid(vpr_setup, arch);
 
@@ -409,7 +412,7 @@ void vpr_create_device(t_vpr_setup& vpr_setup, const t_arch& arch) {
     vpr_setup_noc(vpr_setup, arch);
 
     if (vpr_setup.PlacerOpts.place_chan_width != NO_FIXED_CHANNEL_WIDTH) {
-        vpr_create_rr_graph(vpr_setup, arch, vpr_setup.PlacerOpts.place_chan_width);
+        vpr_create_rr_graph(vpr_setup, arch, vpr_setup.PlacerOpts.place_chan_width, is_flat);
     }
 }
 
@@ -782,7 +785,9 @@ RouteStatus vpr_route_flow(t_vpr_setup& vpr_setup, const t_arch& arch) {
         std::string graphics_msg;
         if (route_status.success()) {
             //Sanity check the routing
-            check_route(router_opts.route_type, router_opts.check_route);
+            check_route(router_opts.route_type,
+                        router_opts.check_route,
+                        router_opts.flat_routing);
             get_serial_num();
 
             //Update status
@@ -859,7 +864,8 @@ RouteStatus vpr_route_fixed_W(t_vpr_setup& vpr_setup,
                             delay_calc,
                             arch.Chans,
                             arch.Directs, arch.num_directs,
-                            ScreenUpdatePriority::MAJOR);
+                            ScreenUpdatePriority::MAJOR,
+                            vpr_setup.RouterOpts.flat_routing);
 
     return RouteStatus(status, fixed_channel_width);
 }
@@ -919,7 +925,7 @@ RouteStatus vpr_load_routing(t_vpr_setup& vpr_setup,
     return RouteStatus(is_legal, fixed_channel_width);
 }
 
-void vpr_create_rr_graph(t_vpr_setup& vpr_setup, const t_arch& arch, int chan_width_fac) {
+void vpr_create_rr_graph(t_vpr_setup& vpr_setup, const t_arch& arch, int chan_width_fac, bool is_flat) {
     auto& device_ctx = g_vpr_ctx.mutable_device();
     auto det_routing_arch = &vpr_setup.RoutingArch;
     auto& router_opts = vpr_setup.RouterOpts;
@@ -951,16 +957,17 @@ void vpr_create_rr_graph(t_vpr_setup& vpr_setup, const t_arch& arch, int chan_wi
                     vpr_setup.Segments,
                     router_opts,
                     arch.Directs, arch.num_directs,
-                    &warnings);
+                    &warnings,
+                    is_flat);
     //Initialize drawing, now that we have an RR graph
     init_draw_coords(chan_width_fac);
 }
 
-void vpr_init_graphics(const t_vpr_setup& vpr_setup, const t_arch& arch) {
+void vpr_init_graphics(const t_vpr_setup& vpr_setup, const t_arch& arch, bool is_flat) {
     /* Startup X graphics */
     init_graphics_state(vpr_setup.ShowGraphics, vpr_setup.GraphPause,
                         vpr_setup.RouterOpts.route_type, vpr_setup.SaveGraphics,
-                        vpr_setup.GraphicsCommands);
+                        vpr_setup.GraphicsCommands, is_flat);
     if (vpr_setup.ShowGraphics || vpr_setup.SaveGraphics || !vpr_setup.GraphicsCommands.empty())
         alloc_draw_structs(&arch);
 }
@@ -1260,7 +1267,8 @@ bool vpr_analysis_flow(t_vpr_setup& vpr_setup, const t_arch& Arch, const RouteSt
                                  g_vpr_ctx.mutable_clustering(),
                                  g_vpr_ctx.placement(),
                                  g_vpr_ctx.routing(),
-                                 vpr_setup.PackerOpts.pack_verbosity > 2);
+                                 vpr_setup.PackerOpts.pack_verbosity > 2,
+                                 vpr_setup.RouterOpts.flat_routing);
 
         std::string post_routing_packing_output_file_name = vpr_setup.PackerOpts.output_file + ".post_routing";
         write_packing_results_to_xml(vpr_setup.PackerOpts.global_clocks,
@@ -1292,7 +1300,8 @@ void vpr_analysis(t_vpr_setup& vpr_setup, const t_arch& Arch, const RouteStatus&
                   vpr_setup.RoutingArch.R_minW_pmos,
                   Arch.grid_logic_tile_area,
                   vpr_setup.RoutingArch.directionality,
-                  vpr_setup.RoutingArch.wire_to_rr_ipin_switch);
+                  vpr_setup.RoutingArch.wire_to_rr_ipin_switch,
+                  vpr_setup.RouterOpts.flat_routing);
 
     if (vpr_setup.TimingEnabled) {
         //Load the net delays

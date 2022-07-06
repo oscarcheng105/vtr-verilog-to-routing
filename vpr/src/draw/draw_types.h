@@ -214,6 +214,7 @@ struct t_draw_state {
     float net_alpha = 0.1;
     float pres_fac = 1.;
     ManualMovesState manual_moves_state;
+    bool is_flat = false;
     bool show_noc_button = false;
     e_draw_noc draw_noc = DRAW_NO_NOC;
     std::shared_ptr<const vtr::ColorMap> noc_usage_color_map = nullptr; // color map used to display noc link bandwidth usage

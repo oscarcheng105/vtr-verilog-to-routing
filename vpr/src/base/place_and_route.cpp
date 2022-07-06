@@ -189,7 +189,8 @@ int binary_search_place_and_route(const t_placer_opts& placer_opts_ref,
                             delay_calc,
                             arch->Chans,
                             arch->Directs, arch->num_directs,
-                            (attempt_count == 0) ? ScreenUpdatePriority::MAJOR : ScreenUpdatePriority::MINOR);
+                            (attempt_count == 0) ? ScreenUpdatePriority::MAJOR : ScreenUpdatePriority::MINOR,
+                            router_opts.flat_routing);
         attempt_count++;
         fflush(stdout);
 
@@ -320,7 +321,8 @@ int binary_search_place_and_route(const t_placer_opts& placer_opts_ref,
                                 timing_info,
                                 delay_calc,
                                 arch->Chans, arch->Directs, arch->num_directs,
-                                ScreenUpdatePriority::MINOR);
+                                ScreenUpdatePriority::MINOR,
+                                router_opts.flat_routing);
 
             if (success && Fc_clipped == false) {
                 final = current;

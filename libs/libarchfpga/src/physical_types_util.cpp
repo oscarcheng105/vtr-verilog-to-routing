@@ -29,17 +29,19 @@
  */
 struct t_pin_inst_port {
     int sub_tile_index;    // Sub Tile index
+    int logical_block_index; // Logical block index
     int capacity_instance; // within capacity
+    int pb_type_idx;
     int port_index;        // Port index
     int pin_index_in_port; // Pin's index within the port
+    int pin_physical_num;
 };
 
 /******************** Subroutine declarations and definition ****************************/
 
-static std::tuple<int, int, int, int> get_pin_index_for_inst(t_physical_tile_type_ptr type, int pin_index, bool is_flat);
+static std::tuple<int, int, int, int, int> get_pin_index_for_inst(t_physical_tile_type_ptr type, int pin_index, bool is_flat);
 
-// #TODO: remove the default value for is_flat
-static t_pin_inst_port block_type_pin_index_to_pin_inst(t_physical_tile_type_ptr type, int pin_index, bool is_flat = false);
+static t_pin_inst_port block_type_pin_index_to_pin_inst(t_physical_tile_type_ptr type, int pin_physical_num, bool is_flat);
 
 static int get_sub_tile_num_internal_classes(const t_sub_tile* sub_tile);
 
@@ -79,16 +81,15 @@ static int get_class_physical_num_from_class_logical_num(t_physical_tile_type_pt
 
 static std::vector<const t_pb_graph_pin*> get_pb_graph_node_pins(const t_pb_graph_node* pb_graph_node);
 
-static std::vector<int> get_connected_child_pins(t_physical_tile_type_ptr physical_type,
+static std::vector<int> get_pb_pin_driving_pins(t_physical_tile_type_ptr physical_type,
                                                  const t_sub_tile* sub_tile,
                                                  t_logical_block_type_ptr logical_block,
                                                  int relative_cap,
-                                                 int mode_num,
                                                  const t_pb_graph_pin* pin);
 
-static std::vector<const t_pb_graph_node*> get_child_pb_graph_node_mode(const t_pb_graph_node* parent_node, int mode_num);
+//static std::vector<const t_pb_graph_node*> get_child_pb_graph_node_mode(const t_pb_graph_node* parent_node, int mode_num);
 
-static std::tuple<int, int, int, int> get_pin_index_for_inst(t_physical_tile_type_ptr type, int pin_index, bool is_flat) {
+static std::tuple<int, int, int, int, int> get_pin_index_for_inst(t_physical_tile_type_ptr type, int pin_index, bool is_flat) {
     int max_ptc = get_tile_ipin_opin_max_ptc(type, is_flat);
     VTR_ASSERT(pin_index < max_ptc);
 
@@ -97,6 +98,7 @@ static std::tuple<int, int, int, int> get_pin_index_for_inst(t_physical_tile_typ
     int sub_tile_cap;
     int pin_inst_num;
     int logical_block_idx;
+    int pb_type_idx;
 
     bool on_tile_pin = is_pin_on_tile(type, pin_index);
 
@@ -120,32 +122,57 @@ static std::tuple<int, int, int, int> get_pin_index_for_inst(t_physical_tile_typ
 
     if(on_tile_pin) {
         logical_block_idx = -1;
+        pb_type_idx = 0;
     } else {
         auto logical_block = get_logical_block_from_pin_physical_num(type, pin_index);
+        auto pb_type = get_pb_pin_from_pin_physical_num(type, pin_index)->parent_node->pb_type;
         VTR_ASSERT(logical_block != nullptr);
         logical_block_idx = logical_block->index;
+        pb_type_idx = pb_type->index_in_logical_block;
     }
 
-    return std::make_tuple(pin_inst_num, sub_tile_cap, sub_tile->index, logical_block_idx);
+    return std::make_tuple(pin_inst_num, sub_tile_cap, sub_tile->index, logical_block_idx, pb_type_idx);
 }
 
-static t_pin_inst_port block_type_pin_index_to_pin_inst(t_physical_tile_type_ptr type, int pin_index, bool is_flat) {
-    int sub_tile_index, inst_num, logical_num;
-    std::tie<int, int, int, int>(pin_index, inst_num, sub_tile_index, logical_num) = get_pin_index_for_inst(type, pin_index, is_flat);
+static t_pin_inst_port block_type_pin_index_to_pin_inst(t_physical_tile_type_ptr type, int pin_physical_num, bool is_flat) {
+    int pin_index, sub_tile_index, inst_num, logical_num, pb_type_idx;
+    std::tie<int, int, int, int>(pin_index, inst_num, sub_tile_index, logical_num, pb_type_idx) = get_pin_index_for_inst(type, pin_physical_num, is_flat);
 
     t_pin_inst_port pin_inst_port;
     pin_inst_port.sub_tile_index = sub_tile_index;
+    pin_inst_port.logical_block_index = logical_num;
     pin_inst_port.capacity_instance = inst_num;
+    pin_inst_port.pb_type_idx = pb_type_idx;
+    pin_inst_port.pin_physical_num = pin_physical_num;
     pin_inst_port.port_index = OPEN;
     pin_inst_port.pin_index_in_port = OPEN;
-
-    for (auto const& port : type->sub_tiles[sub_tile_index].ports) {
-        if (pin_index >= port.absolute_first_pin_index && pin_index < port.absolute_first_pin_index + port.num_pins) {
-            pin_inst_port.port_index = port.index;
-            pin_inst_port.pin_index_in_port = pin_index - port.absolute_first_pin_index;
-            break;
+    if(is_flat) {
+        if(logical_num == -1) {
+            /* pin is located on the tile */
+            for (auto const& port : type->sub_tiles[sub_tile_index].ports) {
+                if (pin_index >= port.absolute_first_pin_index && pin_index < port.absolute_first_pin_index + port.num_pins) {
+                    pin_inst_port.port_index = port.index;
+                    pin_inst_port.pin_index_in_port = pin_index - port.absolute_first_pin_index;
+                    break;
+                }
+            }
+        } else {
+            auto pb_pin = get_pb_pin_from_pin_physical_num(type, pin_physical_num);
+            auto port = pb_pin->port;
+            pin_inst_port.pin_index_in_port = pb_pin->pin_number;
+            pin_inst_port.port_index = port->index;
+        }
+    } else {
+        for (auto const& port : type->sub_tiles[sub_tile_index].ports) {
+            if (pin_index >= port.absolute_first_pin_index && pin_index < port.absolute_first_pin_index + port.num_pins) {
+                pin_inst_port.port_index = port.index;
+                pin_inst_port.pin_index_in_port = pin_index - port.absolute_first_pin_index;
+                break;
+            }
         }
     }
+    VTR_ASSERT(pin_inst_port.port_index != OPEN);
+    VTR_ASSERT(pin_inst_port.pin_index_in_port != OPEN);
     return pin_inst_port;
 }
 
@@ -288,27 +315,10 @@ static int get_class_physical_num_from_class_logical_num(t_physical_tile_type_pt
                                                          int curr_relative_cap,
                                                          int logical_class_num) {
 
-    int num_seen_class = (int)physical_tile->class_inf.size();
-
-    // Add the number of classes in the previous sub_tiles
-    for(int sub_tile_idx = 0; sub_tile_idx < curr_sub_tile->index; sub_tile_idx++) {
-        num_seen_class += get_sub_tile_num_internal_classes(&physical_tile->sub_tiles[sub_tile_idx]);
-    }
-
-    // Add the number of classes in the previous instances (capacity)
-    if(curr_relative_cap != 0) {
-        for (auto logical_block : curr_sub_tile->equivalent_sites) {
-            num_seen_class += ((int)(logical_block->logical_class_inf.size()) * curr_relative_cap);
-        }
-    }
-
-    // Add the number of classes in the previous logical block which can be mapped to the current sub tile
-    for(auto logical_block : curr_sub_tile->equivalent_sites) {
-        if(logical_block == curr_logical_block)
-            break;
-
-        num_seen_class += ((int)logical_block->logical_class_inf.size());
-    }
+    int num_seen_class = get_logical_block_physical_class_num_offset(physical_tile,
+                                                                     curr_sub_tile,
+                                                                     curr_logical_block,
+                                                                     curr_relative_cap);
 
     // Add the offset of the class in the current logical block
     num_seen_class += logical_class_num;
@@ -352,86 +362,72 @@ static std::vector<const t_pb_graph_pin*> get_pb_graph_node_pins(const t_pb_grap
     return pins;
 }
 
-static std::vector<int> get_connected_child_pins(t_physical_tile_type_ptr physical_type,
+static std::vector<int> get_pb_pin_driving_pins(t_physical_tile_type_ptr physical_type,
                                                  const t_sub_tile* sub_tile,
                                                  t_logical_block_type_ptr logical_block,
                                                  int relative_cap,
-                                                 int mode_num,
                                                  const t_pb_graph_pin* pin) {
-    std::vector<int> connected_pins;
-    t_pb_graph_edge** edges;
+    std::vector<int> driving_pins;
+    t_pb_graph_edge** edges = pin->input_edges;
     t_pb_graph_pin** connected_pins_ptr;
-    int num_edges;
-    int num_pins;
-
-    std::vector<const t_pb_graph_node*> child_pb_graph_node = get_child_pb_graph_node_mode(pin->parent_node, mode_num);
-
-    e_pin_type pin_type;
-    if(pin->port->type == PORTS::IN_PORT) {
-        pin_type = e_pin_type::RECEIVER;
-    } else {
-        VTR_ASSERT(pin->port->type == PORTS::OUT_PORT);
-        pin_type = e_pin_type::DRIVER;
-    }
-
-    if(pin_type == e_pin_type::RECEIVER) {
-        num_edges = pin->num_output_edges;
-        edges = pin->output_edges;
-    } else {
-        VTR_ASSERT(pin_type == e_pin_type::DRIVER);
-        num_edges = pin->num_input_edges;
-        edges = pin->input_edges;
-    }
+    int num_edges = pin->num_input_edges;
+    int num_pins = 0;
 
     for(int edge_idx = 0; edge_idx < num_edges; edge_idx++) {
         const t_pb_graph_edge* pb_graph_edge = edges[edge_idx];
-        if(pin_type == e_pin_type::RECEIVER) {
-            connected_pins_ptr = pb_graph_edge->output_pins;
-            num_pins = pb_graph_edge->num_output_pins;
-        }
-        else {
-            VTR_ASSERT(pin_type == e_pin_type::DRIVER);
-            connected_pins_ptr = pb_graph_edge->input_pins;
-            num_pins = pb_graph_edge->num_input_pins;
-        }
-        connected_pins.reserve(num_pins);
+        connected_pins_ptr = pb_graph_edge->input_pins;
+        num_pins += pb_graph_edge->num_input_pins;
+    }
+    driving_pins.reserve(num_pins);
+
+    for(int edge_idx = 0; edge_idx < num_edges; edge_idx++) {
+        const t_pb_graph_edge* pb_graph_edge = edges[edge_idx];
+        connected_pins_ptr = pb_graph_edge->input_pins;
+        num_pins = pb_graph_edge->num_input_pins;
+
         for(int pin_idx = 0; pin_idx < num_pins; pin_idx++) {
             auto conn_pin = connected_pins_ptr[pin_idx];
-            // if-statement is added to only get pins in the specified mode
-            if(std::find(child_pb_graph_node.begin(), child_pb_graph_node.end(), conn_pin->parent_node) != child_pb_graph_node.end()) {
-                connected_pins.push_back(get_pb_pin_physical_num(physical_type,
-                                                                 sub_tile,
-                                                                 logical_block,
-                                                                 relative_cap,
-                                                                 conn_pin));
+            if(conn_pin->is_root_block_pin()) {
+                driving_pins.push_back(get_physical_pin_from_capacity_location(physical_type,
+                                                                               conn_pin->pin_count_in_cluster,
+                                                                               relative_cap+sub_tile->capacity.low));
+            } else {
+                driving_pins.push_back(get_pb_pin_physical_num(physical_type,
+                                                               sub_tile,
+                                                               logical_block,
+                                                               relative_cap,
+                                                               conn_pin));
             }
         }
     }
 
-    return connected_pins;
+    return driving_pins;
 }
 
-static std::vector<const t_pb_graph_node*> get_child_pb_graph_node_mode(const t_pb_graph_node* parent_node, int mode_num) {
-    int num_child_pb_nodes = 0;
-    std::vector<const t_pb_graph_node*> child_pb_nodes;
-
-    const t_mode& mode = parent_node->pb_type->modes[mode_num];
-    for(int pb_type_idx = 0; pb_type_idx < mode.num_pb_type_children; pb_type_idx++) {
-        for(int pb_idx = 0; pb_idx < mode.pb_type_children[pb_type_idx].num_pb; pb_idx++) {
-            num_child_pb_nodes++;
-        }
-    }
-    child_pb_nodes.resize(num_child_pb_nodes);
-    int num_added_pb_nodes = 0;
-    for(int pb_type_idx = 0; pb_type_idx < mode.num_pb_type_children; pb_type_idx++) {
-        for(int pb_idx = 0; pb_idx < mode.pb_type_children[pb_type_idx].num_pb; pb_idx++) {
-            child_pb_nodes[num_added_pb_nodes] = &parent_node->child_pb_graph_nodes[mode_num][pb_type_idx][pb_idx];
-            num_added_pb_nodes++;
-        }
-    }
-    VTR_ASSERT(num_added_pb_nodes == num_child_pb_nodes);
-    return child_pb_nodes;
-}
+//static std::vector<const t_pb_graph_node*> get_child_pb_graph_node_mode(const t_pb_graph_node* parent_node, int mode_num) {
+//    int num_child_pb_nodes = 0;
+//    std::vector<const t_pb_graph_node*> child_pb_nodes;
+//
+//    if(parent_node->is_primitive())
+//        return child_pb_nodes;
+//
+//    const t_mode& mode = parent_node->pb_type->modes[mode_num];
+//    for(int pb_type_idx = 0; pb_type_idx < mode.num_pb_type_children; pb_type_idx++) {
+//        for(int pb_idx = 0; pb_idx < mode.pb_type_children[pb_type_idx].num_pb; pb_idx++) {
+//            num_child_pb_nodes++;
+//        }
+//    }
+//    child_pb_nodes.resize(num_child_pb_nodes);
+//    int num_added_pb_nodes = 0;
+//    for(int pb_type_idx = 0; pb_type_idx < mode.num_pb_type_children; pb_type_idx++) {
+//        for(int pb_idx = 0; pb_idx < mode.pb_type_children[pb_type_idx].num_pb; pb_idx++) {
+//            child_pb_nodes[num_added_pb_nodes] = &parent_node->child_pb_graph_nodes[mode_num][pb_type_idx][pb_idx];
+//            num_added_pb_nodes++;
+//        }
+//    }
+//    VTR_ASSERT(num_added_pb_nodes == num_child_pb_nodes);
+//    return child_pb_nodes;
+//}
 
 /******************** End Subroutine declarations and definition ************************/
 
@@ -546,6 +542,8 @@ int get_physical_pin_at_sub_tile_location(t_physical_tile_type_ptr physical_tile
                                           t_logical_block_type_ptr logical_block,
                                           int sub_tile_capacity,
                                           int pin) {
+
+    VTR_ASSERT(pin < physical_tile->num_pins);
     int sub_tile_index = get_logical_block_physical_sub_tile_index(physical_tile, logical_block, sub_tile_capacity);
 
     if (sub_tile_index == OPEN) {
@@ -708,8 +706,8 @@ std::string block_type_pin_index_to_name(t_physical_tile_type_ptr type, int pin_
     int pin_index;
     std::string pin_name = type->name;
 
-    int sub_tile_index, inst_num, logical_num;
-    std::tie<int, int, int, int>(pin_index, inst_num, sub_tile_index, logical_num) = get_pin_index_for_inst(type, pin_physical_num, is_flat);
+    int sub_tile_index, inst_num, logical_num, port_idx;
+    std::tie<int, int, int, int, int>(pin_index, inst_num, sub_tile_index, logical_num, port_idx) = get_pin_index_for_inst(type, pin_physical_num, is_flat);
 
     if (type->sub_tiles[sub_tile_index].capacity.total() > 1) {
         pin_name += "[" + std::to_string(inst_num) + "]";
@@ -744,35 +742,50 @@ std::string block_type_pin_index_to_name(t_physical_tile_type_ptr type, int pin_
     return "<UNKOWN>";
 }
 
-std::vector<std::string> block_type_class_index_to_pin_names(t_physical_tile_type_ptr type, int class_index) {
-    VTR_ASSERT(class_index < (int)type->class_inf.size());
-
-    auto class_inf = type->class_inf[class_index];
+std::vector<std::string> block_type_class_index_to_pin_names(t_physical_tile_type_ptr type,
+                                                             int class_index,
+                                                             bool is_flat) {
+    t_class class_inf;
+    bool is_inside_cluster_class = is_flat && !is_class_on_tile(type, class_index);
+    if(is_inside_cluster_class) {
+        auto logical_block = get_logical_block_from_class_physical_num(type, class_index);
+        int class_loigcal_num = get_class_logical_num_from_class_physical_num(type, class_index);
+        class_inf = logical_block->logical_class_inf[class_loigcal_num];
+    } else {
+        class_inf = type->class_inf[class_index];
+    }
 
     std::vector<t_pin_inst_port> pin_info;
     for (int ipin = 0; ipin < class_inf.num_pins; ++ipin) {
         int pin_index = class_inf.pinlist[ipin];
-        pin_info.push_back(block_type_pin_index_to_pin_inst(type, pin_index));
+        if(is_inside_cluster_class) {
+            pin_index = get_pin_physical_num_from_class_physical_num(type, class_index, pin_index);
+        }
+        pin_info.push_back(block_type_pin_index_to_pin_inst(type, pin_index, is_inside_cluster_class));
     }
 
     auto cmp = [](const t_pin_inst_port& lhs, const t_pin_inst_port& rhs) {
-        return std::tie(lhs.capacity_instance, lhs.port_index, lhs.pin_index_in_port)
-               < std::tie(rhs.capacity_instance, rhs.port_index, rhs.pin_index_in_port);
+        return std::tie(lhs.pin_physical_num, lhs.capacity_instance, lhs.port_index, lhs.pin_index_in_port)
+               < std::tie(rhs.pin_physical_num, rhs.capacity_instance, rhs.port_index, rhs.pin_index_in_port);
     };
 
     //Ensure all the pins are in order
     std::sort(pin_info.begin(), pin_info.end(), cmp);
 
     //Determine ranges for each capacity instance and port pair
-    std::map<std::tuple<int, int, int>, std::pair<int, int>> pin_ranges;
+    std::map<std::tuple<int, int, int, int, int>, std::array<int, 4>> pin_ranges;
     for (const auto& pin_inf : pin_info) {
-        auto key = std::make_tuple(pin_inf.sub_tile_index, pin_inf.capacity_instance, pin_inf.port_index);
+        auto key = std::make_tuple(pin_inf.sub_tile_index, pin_inf.logical_block_index, pin_inf.pb_type_idx, pin_inf.capacity_instance, pin_inf.port_index);
         if (!pin_ranges.count(key)) {
-            pin_ranges[key].first = pin_inf.pin_index_in_port;
-            pin_ranges[key].second = pin_inf.pin_index_in_port;
+            pin_ranges[key][0] = pin_inf.pin_index_in_port;
+            pin_ranges[key][1] = pin_inf.pin_index_in_port;
+            pin_ranges[key][2] = pin_inf.pin_physical_num;
+            pin_ranges[key][3] = pin_inf.pin_physical_num;
         } else {
-            VTR_ASSERT(pin_ranges[key].second == pin_inf.pin_index_in_port - 1);
-            pin_ranges[key].second = pin_inf.pin_index_in_port;
+            VTR_ASSERT(pin_ranges[key][1] == pin_inf.pin_index_in_port - 1);
+            VTR_ASSERT(pin_ranges[key][3] == pin_inf.pin_physical_num - 1);
+            pin_ranges[key][1] = pin_inf.pin_index_in_port;
+            pin_ranges[key][3] = pin_inf.pin_physical_num;
         }
     }
 
@@ -782,26 +795,43 @@ std::vector<std::string> block_type_class_index_to_pin_names(t_physical_tile_typ
         auto type_port = kv.first;
         auto pins = kv.second;
 
-        int isub_tile, icapacity, iport;
-        std::tie<int, int, int>(isub_tile, icapacity, iport) = type_port;
+        int isub_tile, logical_num, icapacity, iport, pb_idx;
+        std::tie<int, int, int, int, int>(isub_tile, logical_num, pb_idx, icapacity, iport) = type_port;
 
-        int ipin_start = pins.first;
-        int ipin_end = pins.second;
+        int ipin_start = pins[0];
+        int ipin_end = pins[1];
+
+        int pin_physical_start = pins[2];
+        int pin_physical_end = pins[3];
 
         auto& sub_tile = type->sub_tiles[isub_tile];
 
+        std::string port_name;
+        if(is_pin_on_tile(type, pin_physical_start)){
+            VTR_ASSERT(is_pin_on_tile(type, pin_physical_end) == true);
+            port_name = sub_tile.ports[iport].name;
+        } else {
+            VTR_ASSERT(is_pin_on_tile(type, pin_physical_end) == false);
+            auto pb_pin = get_pb_pin_from_pin_physical_num(type, pin_physical_start);
+            port_name = pb_pin->port->name;
+        }
+
         std::string pin_name;
         if (ipin_start == ipin_end) {
-            pin_name = vtr::string_fmt("%s[%d].%s[%d]",
+            pin_name = vtr::string_fmt("%s[%d][%d][%d].%s[%d]",
                                        type->name,
                                        icapacity,
-                                       sub_tile.ports[iport].name,
+                                       logical_num,
+                                       pb_idx,
+                                       port_name.c_str(),
                                        ipin_start);
         } else {
-            pin_name = vtr::string_fmt("%s[%d].%s[%d:%d]",
+            pin_name = vtr::string_fmt("%s[%d][%d][%d].%s[%d:%d]",
                                        type->name,
                                        icapacity,
-                                       sub_tile.ports[iport].name,
+                                       logical_num,
+                                       pb_idx,
+                                       port_name.c_str(),
                                        ipin_start,
                                        ipin_end);
         }
@@ -1071,6 +1101,38 @@ std::unordered_map<int, const t_class*>  get_pb_graph_node_num_class_pairs(t_phy
 
 }
 
+t_class_range get_pb_graph_node_class_physical_range(t_physical_tile_type_ptr physical_tile,
+                                                     const t_sub_tile* sub_tile,
+                                                     t_logical_block_type_ptr logical_block,
+                                                     int sub_tile_relative_cap,
+                                                     const t_pb_graph_node* pb_graph_node) {
+
+    t_class_range class_range;
+
+    auto pb_graph_node_class_pairs = get_pb_graph_node_num_class_pairs(physical_tile,
+                                                                       sub_tile,
+                                                                       logical_block,
+                                                                       sub_tile_relative_cap,
+                                                                       pb_graph_node);
+    int max_key = std::numeric_limits<int>::min();
+    int min_key = std::numeric_limits<int>::max();
+
+    for(auto& class_pair : pb_graph_node_class_pairs) {
+        if(class_pair.first < min_key)
+            min_key = class_pair.first;
+
+        if(class_pair.first > max_key)
+            max_key = class_pair.first;
+    }
+
+    class_range.low = min_key;
+    class_range.high = max_key;
+
+    VTR_ASSERT(class_range.total() == (int)pb_graph_node_class_pairs.size());
+
+    return class_range;
+}
+
 /** **/
 
 int get_total_num_sub_tile_internal_classes(const t_sub_tile* sub_tile) {
@@ -1257,9 +1319,8 @@ std::vector<int> get_pb_graph_node_pins(t_physical_tile_type_ptr physical_tile,
     return pins_num;
 }
 
-std::vector<int> get_connected_child_pins(t_physical_tile_type_ptr physical_type,
+std::vector<int> get_physical_pin_driving_pins(t_physical_tile_type_ptr physical_type,
                                           t_logical_block_type_ptr logical_block,
-                                          int mode_num,
                                           int pin_physical_num) {
 
     const t_sub_tile* sub_tile;
@@ -1281,22 +1342,21 @@ std::vector<int> get_connected_child_pins(t_physical_tile_type_ptr physical_type
         }
         int pin_logical_num = result->second.pin;
         auto pb_pin = logical_block->pb_pin_num_map.at(pin_logical_num);
-        return get_connected_child_pins(physical_type,
+        return get_pb_pin_driving_pins(physical_type,
                                         sub_tile,
                                         logical_block,
                                         sub_tile_cap,
-                                        mode_num,
                                         pb_pin);
 
     } else {
         auto pb_pin = get_pb_pin_from_pin_physical_num(physical_type, pin_physical_num);
-        return get_connected_child_pins(physical_type,
-                                        sub_tile,
-                                        logical_block,
-                                        sub_tile_cap,
-                                        mode_num,
-                                        pb_pin);
+        return get_pb_pin_driving_pins(physical_type,
+                                       sub_tile,
+                                       logical_block,
+                                       sub_tile_cap,
+                                       pb_pin);
     }
+
 
 
 }

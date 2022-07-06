@@ -272,7 +272,8 @@ class RrGraphSerializer final : public uxsd::RrGraphBase<RrGraphContextTypes> {
         const DeviceGrid& grid,
         MetadataStorage<int>* rr_node_metadata,
         MetadataStorage<std::tuple<int, int, short>>* rr_edge_metadata,
-        vtr::string_internment* strings)
+        vtr::string_internment* strings,
+        bool is_flat)
         : wire_to_rr_ipin_switch_(wire_to_rr_ipin_switch)
         , chan_width_(chan_width)
         , rr_nodes_(rr_nodes)
@@ -295,7 +296,8 @@ class RrGraphSerializer final : public uxsd::RrGraphBase<RrGraphContextTypes> {
         , rr_edge_metadata_(rr_edge_metadata)
         , strings_(strings)
         , empty_(strings_->intern_string(vtr::string_view("")))
-        , report_error_(nullptr) {
+        , report_error_(nullptr)
+        , is_flat_(is_flat){
         // Initialize internal data
         init_side_map();
     }
@@ -1212,7 +1214,7 @@ class RrGraphSerializer final : public uxsd::RrGraphBase<RrGraphContextTypes> {
         const t_physical_tile_type* tile;
         int ptc;
         std::tie(tile, ptc) = context;
-        if (block_type_pin_index_to_name(tile, ptc) != value) {
+        if (block_type_pin_index_to_name(tile, ptc, is_flat_) != value) {
             report_error(
                 "Architecture file does not match RR graph's block pin list");
         }
@@ -1276,7 +1278,7 @@ class RrGraphSerializer final : public uxsd::RrGraphBase<RrGraphContextTypes> {
         const t_physical_tile_type* tile;
         int ptc;
         std::tie(tile, ptc) = context;
-        temp_string_ = block_type_pin_index_to_name(tile, ptc);
+        temp_string_ = block_type_pin_index_to_name(tile, ptc, is_flat_);
         return temp_string_.c_str();
     }
     inline int get_pin_ptc(const std::pair<const t_physical_tile_type*, int>& context) final {
@@ -1585,7 +1587,10 @@ class RrGraphSerializer final : public uxsd::RrGraphBase<RrGraphContextTypes> {
         read_rr_graph_filename_->assign(read_rr_graph_name_);
 
         if (do_check_rr_graph_) {
-            check_rr_graph(graph_type_, grid_, physical_tile_types_);
+            check_rr_graph(graph_type_,
+                           grid_,
+                           physical_tile_types_,
+                           is_flat_);
         }
     }
 
@@ -1903,4 +1908,5 @@ class RrGraphSerializer final : public uxsd::RrGraphBase<RrGraphContextTypes> {
     vtr::string_internment* strings_;
     vtr::interned_string empty_;
     const std::function<void(const char*)>* report_error_;
+    bool is_flat_;
 };

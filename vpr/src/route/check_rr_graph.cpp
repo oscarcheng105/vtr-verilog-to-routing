@@ -16,7 +16,7 @@ static void check_unbuffered_edges(int from_node);
 
 static bool has_adjacent_channel(const t_rr_node& node, const DeviceGrid& grid);
 
-static void check_rr_edge(int from_node, int from_edge, int to_node);
+static void check_rr_edge(int from_node, int from_edge, int to_node, bool is_flat);
 
 /************************ Subroutine definitions ****************************/
 
@@ -89,7 +89,7 @@ void check_rr_graph(const t_graph_type graph_type,
                                 inode, to_node);
             }
 
-            check_rr_edge(inode, iedge, to_node);
+            check_rr_edge(inode, iedge, to_node, is_flat);
 
             edges.emplace_back(to_node, iedge);
             total_edges_to_node[to_node]++;
@@ -304,7 +304,10 @@ static bool rr_node_is_global_clb_ipin(RRNodeId inode) {
     return type->is_ignored_pin[ipin];
 }
 
-void check_rr_node(int inode, enum e_route_type route_type, const DeviceContext& device_ctx, bool is_flat) {
+void check_rr_node(int inode,
+                   enum e_route_type route_type,
+                   const DeviceContext& device_ctx,
+                   bool is_flat) {
     /* This routine checks that the rr_node is inside the grid and has a valid
      * pin number, etc.
      */
@@ -611,7 +614,7 @@ static bool has_adjacent_channel(const t_rr_node& node, const DeviceGrid& grid) 
     return true; //All other blocks will be surrounded on all sides by channels
 }
 
-static void check_rr_edge(int from_node, int iedge, int to_node) {
+static void check_rr_edge(int from_node, int iedge, int to_node, bool is_flat) {
     auto& device_ctx = g_vpr_ctx.device();
     const auto& rr_graph = device_ctx.rr_graph;
 
@@ -627,7 +630,7 @@ static void check_rr_edge(int from_node, int iedge, int to_node) {
                 std::string msg = "Non-configurable BUFFER type switch must have only one driver. ";
                 msg += vtr::string_fmt(" Actual fan-in was %d (expected 1).\n", to_fanin);
                 msg += "  Possible cause is complex block output pins connecting to:\n";
-                msg += "    " + describe_rr_node(to_node);
+                msg += "    " + describe_rr_node(to_node, is_flat);
 
                 VPR_FATAL_ERROR(VPR_ERROR_ROUTE, msg.c_str());
             }

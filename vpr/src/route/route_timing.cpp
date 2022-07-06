@@ -97,18 +97,19 @@ static bool timing_driven_route_sink(
     SpatialRouteTreeLookup& spatial_rt_lookup,
     RouterStats& router_stats,
     route_budgets& budgeting_inf,
-    const RoutingPredictor& routing_predictor);
+    const RoutingPredictor& routing_predictor,
+    bool is_flat);
 
 template<typename ConnectionRouter>
-static bool timing_driven_pre_route_to_clock_root(
-    ConnectionRouter& router,
-    ClusterNetId net_id,
-    int sink_node,
-    const t_conn_cost_params cost_params,
-    int high_fanout_threshold,
-    t_rt_node* rt_root,
-    SpatialRouteTreeLookup& spatial_rt_lookup,
-    RouterStats& router_stats);
+static bool timing_driven_pre_route_to_clock_root(ConnectionRouter& router,
+                                                  ClusterNetId net_id,
+                                                  int sink_node,
+                                                  const t_conn_cost_params cost_params,
+                                                  int high_fanout_threshold,
+                                                  t_rt_node* rt_root,
+                                                  SpatialRouteTreeLookup& spatial_rt_lookup,
+                                                  RouterStats& router_stats,
+                                                  bool is_flat);
 
 void disable_expansion_and_remove_sink_from_route_tree_nodes(t_rt_node* node);
 
@@ -201,7 +202,8 @@ static bool try_timing_driven_route_tmpl(const t_router_opts& router_opts,
                                          const ClusteredPinAtomPinsLookup& netlist_pin_lookup,
                                          std::shared_ptr<SetupHoldTimingInfo> timing_info,
                                          std::shared_ptr<RoutingDelayCalculator> delay_calc,
-                                         ScreenUpdatePriority first_iteration_priority);
+                                         ScreenUpdatePriority first_iteration_priority,
+                                         bool is_flat);
 
 /************************ Subroutine definitions *****************************/
 bool try_timing_driven_route(const t_router_opts& router_opts,
@@ -211,7 +213,8 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
                              const ClusteredPinAtomPinsLookup& netlist_pin_lookup,
                              std::shared_ptr<SetupHoldTimingInfo> timing_info,
                              std::shared_ptr<RoutingDelayCalculator> delay_calc,
-                             ScreenUpdatePriority first_iteration_priority) {
+                             ScreenUpdatePriority first_iteration_priority,
+                             bool is_flat) {
     switch (router_opts.router_heap) {
         case e_heap_type::BINARY_HEAP:
             return try_timing_driven_route_tmpl<ConnectionRouter<BinaryHeap>>(
@@ -222,7 +225,8 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
                 netlist_pin_lookup,
                 timing_info,
                 delay_calc,
-                first_iteration_priority);
+                first_iteration_priority,
+                is_flat);
             break;
         case e_heap_type::BUCKET_HEAP_APPROXIMATION:
             return try_timing_driven_route_tmpl<ConnectionRouter<Bucket>>(
@@ -233,7 +237,8 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
                 netlist_pin_lookup,
                 timing_info,
                 delay_calc,
-                first_iteration_priority);
+                first_iteration_priority,
+                is_flat);
         default:
             VPR_FATAL_ERROR(VPR_ERROR_ROUTE, "Unknown heap type %d", router_opts.router_heap);
     }
@@ -247,7 +252,8 @@ bool try_timing_driven_route_tmpl(const t_router_opts& router_opts,
                                   const ClusteredPinAtomPinsLookup& netlist_pin_lookup,
                                   std::shared_ptr<SetupHoldTimingInfo> timing_info,
                                   std::shared_ptr<RoutingDelayCalculator> delay_calc,
-                                  ScreenUpdatePriority first_iteration_priority) {
+                                  ScreenUpdatePriority first_iteration_priority,
+                                  bool is_flat) {
     /* Timing-driven routing algorithm.  The timing graph (includes slack)   *
      * must have already been allocated, and net_delay must have been allocated. *
      * Returns true if the routing succeeds, false otherwise.                    */
@@ -453,7 +459,8 @@ bool try_timing_driven_route_tmpl(const t_router_opts& router_opts,
                                                            budgeting_inf,
                                                            was_rerouted,
                                                            worst_negative_slack,
-                                                           routing_predictor);
+                                                           routing_predictor,
+                                                           is_flat);
 
             if (!is_routable) {
                 return (false); //Impossible to route
@@ -828,7 +835,8 @@ bool try_timing_driven_route_net(ConnectionRouter& router,
                                  route_budgets& budgeting_inf,
                                  bool& was_rerouted,
                                  float worst_negative_slack,
-                                 const RoutingPredictor& routing_predictor) {
+                                 const RoutingPredictor& routing_predictor,
+                                 bool is_flat) {
     auto& cluster_ctx = g_vpr_ctx.clustering();
     auto& route_ctx = g_vpr_ctx.mutable_routing();
 
@@ -867,7 +875,8 @@ bool try_timing_driven_route_net(ConnectionRouter& router,
                                             pin_timing_invalidator,
                                             budgeting_inf,
                                             worst_negative_slack,
-                                            routing_predictor);
+                                            routing_predictor,
+                                            is_flat);
 
         profiling::net_fanout_end(cluster_ctx.clb_nlist.net_sinks(net_id).size());
 
@@ -986,7 +995,8 @@ bool timing_driven_route_net(ConnectionRouter& router,
                              ClusteredPinTimingInvalidator* pin_timing_invalidator,
                              route_budgets& budgeting_inf,
                              float worst_neg_slack,
-                             const RoutingPredictor& routing_predictor) {
+                             const RoutingPredictor& routing_predictor,
+                             bool is_flat) {
     /* Returns true as long as found some way to hook up this net, even if that *
      * way resulted in overuse of resources (congestion).  If there is no way   *
      * to route this net, even ignoring congestion, it returns false.  In this  *
@@ -1084,15 +1094,15 @@ bool timing_driven_route_net(ConnectionRouter& router,
         // Set to the max timing criticality which should intern minimize clock insertion
         // delay by selecting a direct route from the clock source to the virtual sink
         cost_params.criticality = router_opts.max_criticality;
-        if (!timing_driven_pre_route_to_clock_root(
-                router,
-                net_id,
-                sink_node,
-                cost_params,
-                router_opts.high_fanout_threshold,
-                rt_root,
-                spatial_route_tree_lookup,
-                router_stats)) {
+        if (!timing_driven_pre_route_to_clock_root(router,
+                                                   net_id,
+                                                   sink_node,
+                                                   cost_params,
+                                                   router_opts.high_fanout_threshold,
+                                                   rt_root,
+                                                   spatial_route_tree_lookup,
+                                                   router_stats,
+                                                   is_flat)) {
             return false;
         }
     }
@@ -1134,7 +1144,8 @@ bool timing_driven_route_net(ConnectionRouter& router,
                                       spatial_route_tree_lookup,
                                       router_stats,
                                       budgeting_inf,
-                                      routing_predictor))
+                                      routing_predictor,
+                                      is_flat))
             return false;
 
         profiling::conn_finish(route_ctx.net_rr_terminals[net_id][0],
@@ -1176,22 +1187,22 @@ bool timing_driven_route_net(ConnectionRouter& router,
 }
 
 template<typename ConnectionRouter>
-static bool timing_driven_pre_route_to_clock_root(
-    ConnectionRouter& router,
-    ClusterNetId net_id,
-    int sink_node,
-    const t_conn_cost_params cost_params,
-    int high_fanout_threshold,
-    t_rt_node* rt_root,
-    SpatialRouteTreeLookup& spatial_rt_lookup,
-    RouterStats& router_stats) {
+static bool timing_driven_pre_route_to_clock_root(ConnectionRouter& router,
+                                                  ClusterNetId net_id,
+                                                  int sink_node,
+                                                  const t_conn_cost_params cost_params,
+                                                  int high_fanout_threshold,
+                                                  t_rt_node* rt_root,
+                                                  SpatialRouteTreeLookup& spatial_rt_lookup,
+                                                  RouterStats& router_stats,
+                                                  bool is_flat) {
     auto& route_ctx = g_vpr_ctx.mutable_routing();
     auto& cluster_ctx = g_vpr_ctx.clustering();
     auto& m_route_ctx = g_vpr_ctx.mutable_routing();
 
     bool high_fanout = is_high_fanout(cluster_ctx.clb_nlist.net_sinks(net_id).size(), high_fanout_threshold);
 
-    VTR_LOGV_DEBUG(f_router_debug, "Net %zu pre-route to (%s)\n", size_t(net_id), describe_rr_node(sink_node).c_str());
+    VTR_LOGV_DEBUG(f_router_debug, "Net %zu pre-route to (%s)\n", size_t(net_id), describe_rr_node(sink_node, is_flat).c_str());
 
     profiling::sink_criticality_start();
 
@@ -1215,7 +1226,7 @@ static bool timing_driven_pre_route_to_clock_root(
         ClusterBlockId src_block = cluster_ctx.clb_nlist.net_driver_block(net_id);
         VTR_LOG("Failed to route connection from '%s' to '%s' for net '%s' (#%zu)\n",
                 cluster_ctx.clb_nlist.block_name(src_block).c_str(),
-                describe_rr_node(sink_node).c_str(),
+                describe_rr_node(sink_node, is_flat).c_str(),
                 cluster_ctx.clb_nlist.net_name(net_id).c_str(),
                 size_t(net_id));
         if (f_router_debug) {
@@ -1282,7 +1293,8 @@ static bool timing_driven_route_sink(
     SpatialRouteTreeLookup& spatial_rt_lookup,
     RouterStats& router_stats,
     route_budgets& budgeting_inf,
-    const RoutingPredictor& routing_predictor) {
+    const RoutingPredictor& routing_predictor,
+    bool is_flat) {
     /* Build a path from the existing route tree rooted at rt_root to the target_node
      * add this branch to the existing route tree and update pathfinder costs and rr_node_route_inf to reflect this */
     auto& route_ctx = g_vpr_ctx.mutable_routing();
@@ -1291,7 +1303,7 @@ static bool timing_driven_route_sink(
     profiling::sink_criticality_start();
 
     int sink_node = route_ctx.net_rr_terminals[net_id][target_pin];
-    VTR_LOGV_DEBUG(f_router_debug, "Net %zu Target %d (%s)\n", size_t(net_id), itarget, describe_rr_node(sink_node).c_str());
+    VTR_LOGV_DEBUG(f_router_debug, "Net %zu Target %d (%s)\n", size_t(net_id), itarget, describe_rr_node(sink_node, is_flat).c_str());
 
     VTR_ASSERT_DEBUG(verify_traceback_route_tree_equivalent(route_ctx.trace[net_id].head, rt_root));
 

@@ -162,6 +162,8 @@ std::unique_ptr<PlaceDelayModel> compute_place_delay_model(const t_placer_opts& 
                                                            t_chan_width_dist chan_width_dist,
                                                            const t_direct_inf* directs,
                                                            const int num_directs) {
+    /* For placement, we don't use flat-routing option */
+    constexpr bool is_flat = false;
     vtr::ScopedStartFinishTimer timer("Computing placement delta delay look-up");
 
     init_placement_context();
@@ -169,7 +171,7 @@ std::unique_ptr<PlaceDelayModel> compute_place_delay_model(const t_placer_opts& 
     t_chan_width chan_width = setup_chan_width(router_opts, chan_width_dist);
 
     alloc_routing_structs(chan_width, router_opts, det_routing_arch, segment_inf,
-                          directs, num_directs);
+                          directs, num_directs, is_flat);
 
     const RouterLookahead* router_lookahead = get_cached_router_lookahead(
         router_opts.lookahead_type,

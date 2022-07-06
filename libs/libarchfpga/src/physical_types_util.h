@@ -160,11 +160,12 @@ int get_physical_pin_from_capacity_location(t_physical_tile_type_ptr physical_ti
 std::pair<int, int> get_capacity_location_from_physical_pin(t_physical_tile_type_ptr physical_tile, int pin);
 
 ///@brief Returns the name of the pin_index'th pin on the specified block type
-// #TODO: is_flat shouldn't have a default value - This should be modified ASAP!
-std::string block_type_pin_index_to_name(t_physical_tile_type_ptr type, int pin_physical_num, bool is_flat = false);
+std::string block_type_pin_index_to_name(t_physical_tile_type_ptr type, int pin_physical_num, bool is_flat);
 
 ///@brief Returns the name of the class_index'th pin class on the specified block type
-std::vector<std::string> block_type_class_index_to_pin_names(t_physical_tile_type_ptr type, int class_index);
+std::vector<std::string> block_type_class_index_to_pin_names(t_physical_tile_type_ptr type,
+                                                             int class_index,
+                                                             bool is_flat);
 
 ///@brief Returns the physical tile type matching a given physical tile type name, or nullptr (if not found)
 t_physical_tile_type_ptr find_tile_type_by_name(std::string name, const std::vector<t_physical_tile_type>& types);
@@ -335,10 +336,16 @@ std::unordered_map<int, const t_class*> get_logical_block_classes_map(t_physical
                                                                                 int relative_cap);
 
 std::unordered_map<int, const t_class*>  get_pb_graph_node_num_class_pairs(t_physical_tile_type_ptr physical_tile,
-                                            const t_sub_tile* sub_tile,
-                                            t_logical_block_type_ptr logical_block,
-                                            int sub_tile_relative_cap,
-                                            const t_pb_graph_node* pb_graph_node);
+                                                                          const t_sub_tile* sub_tile,
+                                                                          t_logical_block_type_ptr logical_block,
+                                                                          int sub_tile_relative_cap,
+                                                                          const t_pb_graph_node* pb_graph_node);
+
+t_class_range get_pb_graph_node_class_physical_range(t_physical_tile_type_ptr physical_tile,
+                                                     const t_sub_tile* sub_tile,
+                                                     t_logical_block_type_ptr logical_block,
+                                                     int sub_tile_relative_cap,
+                                                     const t_pb_graph_node* pb_graph_node);
 /** **/
 int get_total_num_sub_tile_internal_classes(const t_sub_tile* sub_tile);
 
@@ -372,9 +379,8 @@ std::vector<int> get_pb_graph_node_pins(t_physical_tile_type_ptr physical_tile,
                                         int relative_cap,
                                         const t_pb_graph_node* pb_graph_node);
 
-std::vector<int> get_connected_child_pins(t_physical_tile_type_ptr physical_type,
+std::vector<int> get_physical_pin_driving_pins(t_physical_tile_type_ptr physical_type,
                                           t_logical_block_type_ptr logical_block,
-                                          int mode_num,
                                           int pin_physical_num);
 
 int get_pb_pin_physical_num(t_physical_tile_type_ptr physical_tile,

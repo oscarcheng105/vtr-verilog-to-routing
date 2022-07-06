@@ -311,7 +311,8 @@ TEST_CASE("fasm_integration_test", "[fasm]") {
                                  g_vpr_ctx.mutable_clustering(),
                                  g_vpr_ctx.placement(),
                                  g_vpr_ctx.routing(),
-                                 vpr_setup.PackerOpts.pack_verbosity > 2);
+                                 vpr_setup.PackerOpts.pack_verbosity > 2,
+                                 false);
     }
 
     std::stringstream fasm_string;

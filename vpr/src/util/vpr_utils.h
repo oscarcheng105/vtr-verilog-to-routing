@@ -47,7 +47,7 @@ void get_pin_range_for_block(const ClusterBlockId blk_id,
 void sync_grid_to_blocks();
 
 //Returns a user-friendly architectural identifier for the specified RR node
-std::string rr_node_arch_name(int inode);
+std::string rr_node_arch_name(int inode, bool is_flat = false);
 
 /**************************************************************
  * Intra-Logic Block Utility Functions
