@@ -1219,10 +1219,14 @@ void power_routing_init(const t_det_routing_arch* routing_arch) {
                 max_IPIN_fanin = std::max(max_IPIN_fanin, node_fan_in);
                 max_fanin = std::max(max_fanin, node_fan_in);
 
-                node_power->in_dens = (float*)vtr::calloc(node_fan_in,
-                                                          sizeof(float));
-                node_power->in_prob = (float*)vtr::calloc(node_fan_in,
-                                                          sizeof(float));
+                node_power->in_dens = new float[node_fan_in];
+                node_power->in_prob = new float[node_fan_in];
+                for (int  i = 0 ; i < node_fan_in ; i ++){
+                	node_power->in_dens[i] = 0.;
+                	node_power->in_prob[i] = 0.;
+                }
+
+
                 break;
             case CHANX:
             case CHANY:
@@ -1303,12 +1307,13 @@ bool power_init(const char* power_out_filepath,
     power_ctx.arch = arch->power;
     power_ctx.commonly_used = new t_power_commonly_used;
     power_ctx.tech = (t_power_tech*)vtr::malloc(sizeof(t_power_tech));
-    power_ctx.output = (t_power_output*)vtr::malloc(sizeof(t_power_output));
+    power_ctx.output = new t_power_output;
 
     /* Set up Logs */
     power_ctx.output->num_logs = POWER_LOG_NUM_TYPES;
-    power_ctx.output->logs = (t_log*)vtr::calloc(power_ctx.output->num_logs,
-                                                 sizeof(t_log));
+    power_ctx.output->logs = new t_log[power_ctx.output->num_logs];
+    for (int i = 0 ; i < power_ctx.output->num_logs ; i++)
+    	power_ctx.output->logs[i] = t_log();
     power_ctx.output->logs[POWER_LOG_ERROR].name = vtr::strdup("Errors");
     power_ctx.output->logs[POWER_LOG_WARNING].name = vtr::strdup("Warnings");
 
@@ -1368,8 +1373,8 @@ bool power_uninit() {
             case CHANY:
             case IPIN:
                 if (rr_graph.node_fan_in(rr_id)) {
-                    free(node_power->in_dens);
-                    free(node_power->in_prob);
+                    delete[](node_power->in_dens);
+                    delete[](node_power->in_prob);
                 }
                 break;
             default:
@@ -1409,8 +1414,8 @@ bool power_uninit() {
         free(power_ctx.output->logs[log_idx].messages);
         free(power_ctx.output->logs[log_idx].name);
     }
-    free(power_ctx.output->logs);
-    free(power_ctx.output);
+    delete[](power_ctx.output->logs);
+    delete(power_ctx.output);
 
     power_pb_pins_uninit();
 
