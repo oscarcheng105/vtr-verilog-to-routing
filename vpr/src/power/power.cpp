@@ -1242,10 +1242,12 @@ void power_routing_init(const t_det_routing_arch* routing_arch) {
                 max_seg_to_seg_fanout = std::max(max_seg_to_seg_fanout, fanout_to_seg);
                 max_fanin = std::max(max_fanin, node_fan_in);
 
-                node_power->in_dens = (float*)vtr::calloc(node_fan_in,
-                                                          sizeof(float));
-                node_power->in_prob = (float*)vtr::calloc(node_fan_in,
-                                                          sizeof(float));
+                node_power->in_dens = new float[node_fan_in];
+                node_power->in_prob = new float[node_fan_in];
+                for (int  i = 0 ; i < node_fan_in ; i ++){
+                	node_power->in_dens[i] = 0.;
+                	node_power->in_prob[i] = 0.;
+                }
                 break;
             default:
                 /* Do nothing */
